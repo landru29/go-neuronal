@@ -1,7 +1,9 @@
 package main
 
 import (
+	"errors"
 	"fmt"
+	"math"
 	"math/rand"
 
 	"github.com/gonum/matrix/mat64"
@@ -13,6 +15,33 @@ const nbInputs = 2
 type training struct {
 	inputs  []*mat64.Dense
 	targets []*mat64.Dense
+}
+
+func forward(input *mat64.Dense, parameters *mat64.Dense) (output *mat64.Dense, err error) {
+	rIn, cIn := input.Dims()
+
+	if cIn != 1 {
+		err = errors.New("Input vector must have one column")
+	}
+
+	// Add an element of 1 at the end of the vector (bias)
+	inputData := append(input.RawRowView(0), 1)
+	inputWithBias := mat64.NewDense(rIn+1, 1, inputData)
+
+	// Compine Parameters
+	var out mat64.Dense
+	out.Mul(parameters, inputWithBias)
+
+	// Apply transfer function
+	outputData := out.RawRowView(0)
+	for i, cell := range outputData {
+		outputData[i] = 1 / (1 + math.Exp(-cell))
+	}
+
+	// Recreate vector
+	output = mat64.NewDense(len(outputData), 1, outputData)
+
+	return
 }
 
 func main() {
