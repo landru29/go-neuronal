@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 	"math"
 	"math/rand"
@@ -17,29 +16,28 @@ type training struct {
 	targets []*mat64.Dense
 }
 
-func forward(input *mat64.Dense, parameters *mat64.Dense) (output *mat64.Dense, err error) {
-	rIn, cIn := input.Dims()
-
-	if cIn != 1 {
-		err = errors.New("Input vector must have one column")
-	}
-
+func forward(input *mat64.Vector, parameters *mat64.Dense) (output *mat64.Vector) {
 	// Add an element of 1 at the end of the vector (bias)
-	inputData := append(input.RawRowView(0), 1)
-	inputWithBias := mat64.NewDense(rIn+1, 1, inputData)
+	inputData := input.RawVector().Data
+	inputData = append(inputData, 1)
+	inputWithBias := mat64.NewVector(input.Len()+1, inputData)
 
-	// Compine Parameters
-	var out mat64.Dense
-	out.Mul(parameters, inputWithBias)
+	// Combine Parameters
+	output.MulVec(parameters, inputWithBias)
 
 	// Apply transfer function
-	outputData := out.RawRowView(0)
-	for i, cell := range outputData {
-		outputData[i] = 1 / (1 + math.Exp(-cell))
+	for r := 0; r < output.Len(); r++ {
+		output.SetVec(r, 1/(1+math.Exp(-output.At(r, 0))))
 	}
 
-	// Recreate vector
-	output = mat64.NewDense(len(outputData), 1, outputData)
+	return
+}
+
+func cost(output *mat64.Vector, target *mat64.Vector) (e *mat64.Vector) {
+	e.CopyVec(target)
+	for r := 0; r < e.Len(); r++ {
+		e.SetVec(r, math.Pow(target.At(r, 0)-output.At(r, 0), 2)/2)
+	}
 
 	return
 }
